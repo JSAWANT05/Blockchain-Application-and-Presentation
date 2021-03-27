@@ -1,0 +1,21 @@
+query selectDrugAtStorageFacility {
+  description: "Select all drugs currently at StorageFacility"
+  statement:
+      SELECT org.metapharma.Drug
+          WHERE (locationStatus == "STORAGE")
+}
+
+query selectPatientsEnrolled {
+  description: "Count the number of patients enrolled in the trial"
+  statement:
+      SELECT org.metapharma.Patient
+         WHERE (status == "ENROLLED")
+}
+
+query selectPatientsInTrial {
+  description: "Count the number of patients participating in trail"
+  statement:
+      SELECT org.metapharma.Patient
+          WHERE (status == "SELECTED" OR "IN_TRIAL" OR
+          "COMPLETED_SUCCESSFULLY" OR "COMPLETED_UNSUCCESSFULLY")
+}
