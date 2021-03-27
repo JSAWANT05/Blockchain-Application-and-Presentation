@@ -1,0 +1,322 @@
+namespace org.metapharma
+
+/**
+ * Participant types in this business network
+ */
+
+participant Business identified by name {
+  o String name
+  o String email
+  o String phone
+  o BusinessType businesstype
+  o Address address
+  o Double accountBalance optional
+}
+
+/**
+ * A concept for a street address
+ */
+
+concept Address {
+  o String streetAddress
+  o String city
+  o String state optional
+  o String zip optional
+  o String country
+}
+
+enum BusinessType {
+  o MANUFACTURER
+  o STORAGEFACILITY
+  o COURIER
+  o HOSPITAL
+  o COMPETENT_AUTHORITY
+}
+/**
+ * Patients receiving the trial drug being tracked as an asset
+ * on the ledger
+ */
+
+asset Patient identified by patientId {
+  o String patientId
+  o String hospital
+  o PatientStatus status
+  o Integer injectionsReceived
+  o DateTime firstInjection optional
+  o DateTime secondInjection optional
+  o DateTime thirdInjection optional
+  o DateTime fourthInjection optional
+  o DateTime fifthInjection optional
+  o String nextDose optional
+  }
+
+/**
+ * A list of potential statuses a patient may have
+ */
+
+enum PatientStatus {
+  o ENROLLED
+  o REJECTED
+  o SELECTED
+  o IN_TRIAL
+  o COMPLETED_SUCCESSFULLY
+  o COMPLETED_UNSUCCESSFULLY
+}
+
+/**
+ * Vials of the trial drug being tracked as an asset
+ * on the ledger, and the associated trial protocol information that
+ * details the number and locations of patients,
+ * the drug and dosage levels, the timeline and other regulatory information
+ */
+
+ asset Drug identified by vialId {
+  o String vialId
+  o LocationStatus locationStatus
+  o DateTime manufacturedDate
+  o DateTime storageReceived optional
+  o DateTime storageShipped optional
+  o Integer daysInStorage optional
+  o Double minTemperature
+  o Double maxTemperature
+  o String protocol
+  o String dosageLevel
+  o Integer doseIntervalDays
+  o Double [] tempAuditRecord optional
+
+ }
+
+/**
+ * A list of potential statuses a vial of the drug may have
+ */
+
+ enum LocationStatus {
+  o PRODUCED
+  o PACKED
+  o IN_TRANSIT_TO_STORAGE
+  o STORAGE
+  o IN_TRANSIT_TO_HOSPITAL
+  o HOSPITAL
+  o READY_FOR_USE
+  o INJECTED
+  o DISCARDED
+}
+
+/**
+ * A shipment being tracked as an asset on the ledger, with attributes for
+ * the specific vials in the shipment, the shipped/received dates, truck ID
+ * number, recipient signature and an audit of the drug's temperature.
+ */
+
+asset Shipment identified by shipmentId {
+  o String shipmentId
+  o ShipmentStatus status
+  o Double shipmentTemperature
+  o Double receiptTemperature optional
+  o DateTime shipped
+  o DateTime received optional
+  o String truckId
+  o String signature optional
+  --> Drug drug
+  --> Business shipper
+  --> Business receiver
+  --> Business courier
+  --> Contract contract
+}
+
+/**
+ * Potential statuses a shipment may have
+ */
+
+enum ShipmentStatus {
+  o ABORTED
+  o IN_TRANSIT
+  o ARRIVED
+}
+
+/**
+ * A contract asset stating the shipping payment amount between
+ * named origin and destination points
+ */
+
+asset Contract identified by contractId {
+  o String contractId
+  o Double payment
+  --> Business payer
+}
+
+/**
+ * A transaction to record the manufacture of the drug, and assign its
+ * vial ID number
+ */
+
+transaction Manufactures {
+  o String vialId
+  o DateTime manufacturedDate
+  --> Drug drug
+ }
+
+/**
+ * A transaction related to the packing the of the drug at the
+ * manufacturer
+ */
+
+transaction DrugPack {
+   --> Drug drug
+ }
+
+/**
+ * An abstract transaction that is related to a shipment
+ */
+
+ abstract transaction ShipmentTransaction {
+     --> Shipment shipment
+ }
+
+/**
+ * A transaction to track a drug's initial shipment from the Manufacturer
+ * to the StorageFacility
+ */
+
+transaction BuildsShipment extends ShipmentTransaction {
+  o String newShipmentId
+  o String truckId
+  o DateTime shippedDate
+  o Double shipmentTemperature
+  --> Business courier
+  --> Business receiver
+  --> Business shipper
+  --> Contract contract
+  --> Drug drug
+}
+
+/**
+ * A transaction to track a drug's shipment from the Storage Facility
+ * to a Hospital
+ */
+
+transaction ToHospitalShip extends ShipmentTransaction {
+  o String newShipmentId
+  o String truckId
+  o DateTime shippedDate
+  o Double shipmentTemperature
+  --> Business courier
+  --> Business receiver
+  --> Business shipper
+  --> Drug drug
+  --> Contract contract
+}
+
+/**
+ * A transaction to track the receipt of the drug at the StorageFacility
+ */
+
+transaction StorageReceive extends ShipmentTransaction {
+  o String signature
+  o DateTime receivedDate
+  o Double receiptTemperature
+ }
+
+/**
+ * A transaction for the storage facility to perform a temperature audit
+ */
+
+transaction TempAudit {
+  o Double temperatureReading
+  --> Drug drug
+}
+
+/**
+ * A transaction to track a drug's receipt at
+ * the Hospital
+ */
+
+transaction HospitalReceive extends ShipmentTransaction {
+  o String signature
+  o DateTime receivedDate
+  o Double receiptTemperature
+}
+
+/**
+ * A transaction to record the unpacking of a vial at the hospital and
+ * flag it as ready for use
+ */
+
+transaction DrugUnpack {
+  --> Drug drug
+  o Double temperatureReading
+}
+
+/**
+ * An abstract transaction for injections, related to the drug and patient
+ */
+
+abstract transaction InjectionTransaction {
+  --> Drug drug
+  --> Patient patient
+}
+
+/**
+ * A transaction to record the time and administrator of the injections
+ */
+
+transaction Injection extends InjectionTransaction {
+  o String administeredBy
+  o DateTime timeAdministered
+}
+
+/**
+ * A transaction to enroll a patient at a hospital
+ */
+
+transaction PatientEnrollment {
+  o String patientId
+  o String hospital
+  --> Patient patient
+}
+
+/**
+ * A transaction to update the status of a patient
+ */
+ 
+transaction UpdatePatient {
+  o PatientStatus status
+  --> Patient patient
+}
+
+event NewDrugNotification {
+  --> Drug drug
+}
+
+event DrugPacked {
+  --> Drug drug
+}
+
+event DrugUnpacked {
+  --> Drug drug
+}
+
+event TempAuditNotification {
+  --> Drug drug
+}
+
+event ShipNotification {
+  --> Shipment shipment
+}
+
+event ReceiptNotification {
+  --> Shipment shipment
+}
+
+event InjectionNotification {
+  --> Patient patient
+  --> Drug drug
+}
+
+event EnrollmentNotification {
+  --> Patient patient
+}
+
+event UpdateNotification {
+  --> Patient patient
+}
